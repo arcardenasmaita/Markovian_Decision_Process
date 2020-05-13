@@ -1,0 +1,12 @@
+matriz = []
+archivo = open('Ambiente1/Action_Leste.txt')
+for linea in archivo:
+    matriz.append([int(float(linea.strip().split()[0])),
+                   int(float(linea.strip().split()[1])),
+                   float(linea.strip().split()[2])])
+archivo.close()
+
+
+for tripla in matriz:
+    if tripla[0] == 125 and tripla[1] == 125:
+        print(tripla[2])
