@@ -124,23 +124,24 @@ def valueIteration(mdp, epsilon, ganma):
 ### Experimentos
 def executarExperimentosVI(mdpObject,ambiente,nro_exp):
     ganma =  1
-    epsilon = 0.00001
-    for i in range(0,nro_exp):
-        print('*********************************************')
-        print('  Experimento '+ str(i+1) + ' em ' + ambiente)
-        print('  Ganma = ' + str(ganma))
-        print('  Epsilon = '+ str(epsilon))
-        print('*********************************************')
+    epsilon = 0.001
+    for i in range(0,nro_exp):        
         tempo_inicial_vi = time()
         V_opt, pi_opt = valueIteration(mdp, epsilon, ganma)
         tempo_final_vi = time()    
         tempo_execucao_vi = tempo_final_vi-tempo_inicial_vi
-        print('Tempo algoritmo VI em '+ ambiente + ': ' + str(tempo_execucao_vi/60))
+        print('*********************************************')
+        print('  Ambiente: ' + ambiente)
+        print('  Experimento:'+ str(i+1))
+        print('  Ganma: ' + str(ganma))
+        print('  Epsilon: '+ str(epsilon))
+        print('  Tempo VI: '+ str(tempo_execucao_vi/360))
+        print('*********************************************')        
         # mostrar solucao e salvar resultados em arquivo        
         results = mdp.printSolution(V_opt, pi_opt)
-        results.to_csv('results_'+ambiente+'_exp'+str(i)+'_ganma'+str(ganma)+'_epsilon'+str(epsilon)+'.txt', index=False) 
-        ganma = ganma - 0.20
-        epsilon = epsilon/10            
+        results.to_csv('results_'+ambiente+'_exp'+str(i+1)+'_ganma'+str(ganma)+'_epsilon'+str(epsilon)+'_tempo'+str(tempo_execucao_vi/360)+'.txt', index=False) 
+        ganma = ganma - 0.2
+        epsilon = epsilon*0.1            
 
 
 
