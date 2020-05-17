@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import csv
 import sys
 import os
+import matplotlib
+import seaborn as sb
 
 sys.setrecursionlimit(10000)
 
@@ -70,34 +72,19 @@ class MDP(object):
         self.T_sul.columns=('s_in', 's_out', 'prob')
         self.T_leste.columns=('s_in', 's_out', 'prob')
         self.T_oeste.columns=('s_in', 's_out', 'prob')
-    def printSolution(self, V, pi):       
-        #s_river = np.reshape(V,(self.X,self.Y))
-        #polices = np.reshape(pi,(self.X,self.Y))        
-        #print("Valores otimos")
-        #print(s_river)
-        #print("Politica ótima")
-        #print(polices)
-        #pi_grafico = np.empty(self.S, dtype='str')
-        #for p in pi:
-        #   if p == 0.:
-        #        pi_grafico[p.index] = '^'
-        #    elif p == 1.:
-        #        pi_grafico[p.index] = 'v'
-        #    elif p == 2.:
-        #        pi_grafico[p.index] = '>'
-        #    elif p == 3.:
-        #        pi_grafico[p.index] = '<'
         
-        results = pd.DataFrame(columns=['s', 'V', 'pi', 'pi_grafico'])        
-        print('{:2} {:5} {:5}'.format('s', 'V(s)', 'pi(s)'))       
-        for s in range(0,self.S):
-            print('(S:{:2}, V:{:5}, pi:{:5})'.format(s+1, V[s], pi[s]))
-            results = results.append({'s': s+1,
-                                     'V': V[s], 
-                                     'pi': pi[s]}, ignore_index=True)    
-                
-        return results
-        
+def printSolution(self, Rm,X,Y):    
+    Rm = Rm.drop([3], axis=1) 
+    Rm = Rm.to_numpy()
+    
+    Vm = Rm[:,1]
+    Pm = Rm[:,2]
+    
+    Vm = Vm.reshape(X,Y)
+    #pi_grafico = Pm.reshape(Y,X)
+    heat_map = sb.heatmap(Vm)
+    figure = heat_map.get_figure()    
+    figure.savefig(os.path.join("Img_ambiente_%s_ep_%s_g_%s.png" % (ambiente,epsilon,ganma)))
 
 ### Algoritmos
         
@@ -122,7 +109,10 @@ def valueIteration(mdp, epsilon, ganma):
                     Q[state-1,action] = Q[state-1,action] + ganma*mdp.T(state,sNext,action)*V_old[sNext-1]                
                     q = q+1
             V[state-1] = np.max(Q, axis=1)[state-1] 
-            pi[state-1] = np.argmax(Q, axis=1)[state-1]            
+            pi[state-1] = np.argmax(Q, axis=1)[state-1]      
+            # Vm = V.reshape(mdp.X, mdp.Y)
+            # heat_map = sb.heatmap(Vm)
+            # plt.show()
         # verificar a convergencia
         res = 0
         for s in mdp.states():
@@ -133,9 +123,7 @@ def valueIteration(mdp, epsilon, ganma):
     return V,pi,converg
 
 ### Experimentos
-def executarExperimentosVI(mdpObject,ambiente,nro_exp):
-    ganma =  0.9
-    epsilon = 0.01
+def executarExperimentosVI(mdpObject,ambiente,nro_exp, ganma, epsilon):    
     fig, axs = plt.subplots(nro_exp, 1, sharex=True)
     
     for i in range(1,nro_exp+1):
@@ -145,15 +133,16 @@ def executarExperimentosVI(mdpObject,ambiente,nro_exp):
         tempo_execucao_vi = tempo_final_vi-tempo_inicial_vi
         print('*********************************************')
         print('  Ambiente: ' + ambiente)
-        print('  Experimento: ' + nro_exp)
+        print('  Experimento: ' + str(nro_exp))
         print('  Ganma: ' + str(ganma))
         print('  Epsilon: '+ str(epsilon))
         print('  Tempo VI: '+ str(tempo_execucao_vi/360))
-        print('  Nro iteracoes: ' + str(np.max(converg.loc[:,'error'])))
+        print('  Nro iteracoes: ' + str(np.max(converg.loc[:,'Iteracoes'])))
+        print('  Erro converg: ' + str(np.min(converg.loc[:,'Erro'])))
         print('  Nro calculos de Q: ' + str(np.max(converg.loc[:,'q'])))
         print('*********************************************')        
         # mostrar solucao e salvar resultados em arquivo        
-        #results = mdp.printSolution(V_opt, pi_opt)
+        results = printSolution(converg)
         # converg = pd.DataFrame(columns=['Iteracoes', 'Erro','q'])
         # converg.loc[9] = [2,2,3]
         # converg.loc[10] = [3,4,4]
@@ -164,7 +153,7 @@ def executarExperimentosVI(mdpObject,ambiente,nro_exp):
         axs[i-1].set_title('Experimento'+str(i))
         
         # salvar resultados
-        results.to_csv('res_'+ambiente+'_exp_'+str(i+1)+'_g_'+str(ganma)+'_e_'+str(epsilon)+'_t'+str(tempo_execucao_vi/360)+'_it_'+str(nr_iteration)+'_calq_'+str(nr_calculateq)+'.txt', index=False) 
+        converg.to_csv('Amb_'+ambiente+'_exp_'+str(i)+'_g_'+str(ganma)+'_e_'+str(epsilon)+'_t'+str(tempo_execucao_vi/360)+'_it_'+str(np.max(converg.loc[:,'Iteracoes']))+'_calq_'+str(np.max(converg.loc[:,'q']))+'.txt', index=False) 
         
         # variar os parámetros
         ganma = ganma - 0.2
@@ -176,12 +165,14 @@ def executarExperimentosVI(mdpObject,ambiente,nro_exp):
         
     plt.savefig(os.path.join("ambiente_%s_ep_%s_g_%s.png" % (ambiente,epsilon,ganma)), bbox_inches='tight')
 
+#mdp = MDP(So=6, G=10, X=5, Y=2, ambiente='Ambiente0')
+#executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente0', nro_exp = 3, ganma =  0.9, epsilon = 0.0001)
 
-mdp = MDP(So=1, G=125, X=5, Y=25, ambiente='Ambiente1')
-executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente1', nro_exp = 3)
+mdp = MDP(So=101, G=125, X=5, Y=25, ambiente='Ambiente1')
+executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente1', nro_exp = 3, ganma =  0.9, epsilon = 0.001)
 
-mdp = MDP(So=1, G=2000, X=20, Y=100, ambiente='Ambiente2')
-executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente2', nro_exp = 2)
+# mdp = MDP(So=1, G=2000, X=20, Y=100, ambiente='Ambiente2')
+# executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente2', nro_exp = 2, ganma =  0.9, epsilon = 0.01)
 
-mdp = MDP(So=1, G=12500, X=50, Y=250, ambiente='Ambiente3')
-executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente3', nro_exp = 2)
+# mdp = MDP(So=1, G=12500, X=50, Y=250, ambiente='Ambiente3')
+# executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente3', nro_exp = 2, ganma =  0.9, epsilon = 0.1)
