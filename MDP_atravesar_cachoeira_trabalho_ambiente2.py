@@ -103,14 +103,17 @@ def valueIteration(mdp, epsilon, ganma):
     pi = np.zeros([mdp.S]) # politicas otimas
     res = np.inf
     Q = np.zeros([mdp.S,mdp.A])
-    
+    k = 0
+    q = 0
     while res > epsilon:
+        k=k+1
         np.copyto(V_old, V) 
         for state in mdp.states():
             for action in mdp.actions():
                 Q[state-1,action] = (-1)*mdp.R(state-1,action)
                 for sNext in mdp.states():
                     Q[state-1,action] = Q[state-1,action] + ganma*mdp.T(state,sNext,action)*V_old[sNext-1]                
+                    q = q+1
             V[state-1] = np.max(Q, axis=1)[state-1] 
             pi[state-1] = np.argmax(Q, axis=1)[state-1]            
         # verificar a convergencia
@@ -119,15 +122,15 @@ def valueIteration(mdp, epsilon, ganma):
             dif = abs(V_old[s-1]-V[s-1])
             if dif > res:
                 res = dif
-    return V,pi
+    return V,pi,k,q
 
 ### Experimentos
 def executarExperimentosVI(mdpObject,ambiente,nro_exp):
-    ganma =  1
-    epsilon = 0.001
+    ganma =  0.8
+    epsilon = 0.01
     for i in range(0,nro_exp):        
         tempo_inicial_vi = time()
-        V_opt, pi_opt = valueIteration(mdp, epsilon, ganma)
+        V_opt, pi_opt,nr_iteration,nr_calculateq = valueIteration(mdp, epsilon, ganma)
         tempo_final_vi = time()    
         tempo_execucao_vi = tempo_final_vi-tempo_inicial_vi
         print('*********************************************')
@@ -136,17 +139,19 @@ def executarExperimentosVI(mdpObject,ambiente,nro_exp):
         print('  Ganma: ' + str(ganma))
         print('  Epsilon: '+ str(epsilon))
         print('  Tempo VI: '+ str(tempo_execucao_vi/360))
+        print('  Nro iteracoes: ' + str(nr_iteration))
+        print('  Nro calculos de Q: ' + str(nr_calculateq))
         print('*********************************************')        
         # mostrar solucao e salvar resultados em arquivo        
-        results = mdp.printSolution(V_opt, pi_opt)
-        results.to_csv('results_'+ambiente+'_exp'+str(i+1)+'_ganma'+str(ganma)+'_epsilon'+str(epsilon)+'_tempo'+str(tempo_execucao_vi/360)+'.txt', index=False) 
-        ganma = ganma - 0.2
-        epsilon = epsilon*0.1            
+        #results = mdp.printSolution(V_opt, pi_opt)
+        results.to_csv('res_'+ambiente+'_exp_'+str(i+1)+'_g_'+str(ganma)+'_e_'+str(epsilon)+'_t'+str(tempo_execucao_vi/360)+'_it_'+str(nr_iteration)+'_calq_'+str(nr_calculateq)+'.txt', index=False) 
+        ganma = ganma - 0.3
+        epsilon = epsilon*0.01            
 
 
 
-mdp = MDP(So=1, G=125, X=5, Y=25, ambiente='Ambiente1')
-executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente1', nro_exp = 3)
+#mdp = MDP(So=1, G=125, X=5, Y=25, ambiente='Ambiente1')
+#executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente1', nro_exp = 3)
 
 mdp = MDP(So=1, G=2000, X=20, Y=100, ambiente='Ambiente2')
 executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente2', nro_exp = 3)
