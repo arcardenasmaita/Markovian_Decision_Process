@@ -9,7 +9,12 @@
 import sys
 import numpy as np
 import pandas as pd
-from time import time 
+from time import time
+import matplotlib.pyplot as plt
+import csv
+import sys
+import os
+
 sys.setrecursionlimit(10000)
 
 ### Classe MDP
@@ -104,8 +109,10 @@ def valueIteration(mdp, epsilon, ganma):
     res = np.inf
     Q = np.zeros([mdp.S,mdp.A])
     k = 0
-    q = 0
-    while res > epsilon:
+   
+    converg = pd.DataFrame(columns=['Iteracoes', 'Erro','q'])
+    while res > epsilon:                
+        q = 0
         k=k+1
         np.copyto(V_old, V) 
         for state in mdp.states():
@@ -122,39 +129,59 @@ def valueIteration(mdp, epsilon, ganma):
             dif = abs(V_old[s-1]-V[s-1])
             if dif > res:
                 res = dif
-    return V,pi,k,q
+        converg.loc[k] = [k,res,q]
+    return V,pi,converg
 
 ### Experimentos
 def executarExperimentosVI(mdpObject,ambiente,nro_exp):
-    ganma =  0.8
+    ganma =  0.9
     epsilon = 0.01
-    for i in range(0,nro_exp):        
+    fig, axs = plt.subplots(nro_exp, 1, sharex=True)
+    
+    for i in range(1,nro_exp+1):
         tempo_inicial_vi = time()
-        V_opt, pi_opt,nr_iteration,nr_calculateq = valueIteration(mdp, epsilon, ganma)
+        V_opt, pi_opt, converg = valueIteration(mdp, epsilon, ganma)
         tempo_final_vi = time()    
         tempo_execucao_vi = tempo_final_vi-tempo_inicial_vi
         print('*********************************************')
         print('  Ambiente: ' + ambiente)
-        print('  Experimento:'+ str(i+1))
+        print('  Experimento: ' + nro_exp)
         print('  Ganma: ' + str(ganma))
         print('  Epsilon: '+ str(epsilon))
         print('  Tempo VI: '+ str(tempo_execucao_vi/360))
-        print('  Nro iteracoes: ' + str(nr_iteration))
-        print('  Nro calculos de Q: ' + str(nr_calculateq))
+        print('  Nro iteracoes: ' + str(np.max(converg.loc[:,'error'])))
+        print('  Nro calculos de Q: ' + str(np.max(converg.loc[:,'q'])))
         print('*********************************************')        
         # mostrar solucao e salvar resultados em arquivo        
         #results = mdp.printSolution(V_opt, pi_opt)
+        # converg = pd.DataFrame(columns=['Iteracoes', 'Erro','q'])
+        # converg.loc[9] = [2,2,3]
+        # converg.loc[10] = [3,4,4]
+        # converg.loc[12] = [4,6,4]
+        
+        # plot figuras
+        axs[i-1].plot(converg.loc[:,'Iteracoes'], converg.loc[:,'Erro'], lw=2)        
+        axs[i-1].set_title('Experimento'+str(i))
+        
+        # salvar resultados
         results.to_csv('res_'+ambiente+'_exp_'+str(i+1)+'_g_'+str(ganma)+'_e_'+str(epsilon)+'_t'+str(tempo_execucao_vi/360)+'_it_'+str(nr_iteration)+'_calq_'+str(nr_calculateq)+'.txt', index=False) 
-        ganma = ganma - 0.3
-        epsilon = epsilon*0.01            
+        
+        # variar os parámetros
+        ganma = ganma - 0.2
+        epsilon = epsilon*0.01      
+    
+    for ax in axs.flat:
+        ax.set(xlabel='Iteracoes', ylabel='Erro')
+        ax.label_outer()
+        
+    plt.savefig(os.path.join("ambiente_%s_ep_%s_g_%s.png" % (ambiente,epsilon,ganma)), bbox_inches='tight')
 
 
-
-#mdp = MDP(So=1, G=125, X=5, Y=25, ambiente='Ambiente1')
-#executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente1', nro_exp = 3)
+mdp = MDP(So=1, G=125, X=5, Y=25, ambiente='Ambiente1')
+executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente1', nro_exp = 3)
 
 mdp = MDP(So=1, G=2000, X=20, Y=100, ambiente='Ambiente2')
-executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente2', nro_exp = 3)
+executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente2', nro_exp = 2)
 
 mdp = MDP(So=1, G=12500, X=50, Y=250, ambiente='Ambiente3')
-executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente3', nro_exp = 3)
+executarExperimentosVI(mdpObject = mdp, ambiente = 'Ambiente3', nro_exp = 2)

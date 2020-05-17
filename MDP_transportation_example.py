@@ -14,7 +14,7 @@ import os
 import sys
 sys.setrecursionlimit(10000)
 ### Modelo (problema de busqueda)
-
+i = 0
 class TransportationProblem(object):
     def __init__(self, N):
         # N = numero de bloques de calles
@@ -33,7 +33,9 @@ class TransportationProblem(object):
         if state*2 <= self.N:
             result.append('tram')
         return result
+
     def succesorProbReward(self, state,action):
+        global i
         # devuelve una lista de la tripla (nuevoEstado, probabilidad, recompensa)
         # estado = s, accion = a, nuevoEstado = s'
         # probabilidad = T(s, a, s'), recompensa = Reward(s, a, s')        
@@ -43,6 +45,8 @@ class TransportationProblem(object):
         if action == 'tram':
             result.append((state*2, 0.5, -2.))
             result.append((state, 0.5, -2.))
+        i = i+1
+        print(i)
         return result
     def discount(self):
         return 1.
@@ -87,15 +91,15 @@ def valueIteration(mdp):
         os.system('clear')
         
         print('{:15} {:15} {:15}'.format('s', 'V(s)', 'pi(s)'))
-        for state in mdp.states():
-            print ('{:15} {:15} {:15}'.format(state, V[state], pi[state]))
-        input()
+        #for state in mdp.states():
+            #print ('{:15} {:15} {:15}'.format(state, V[state], pi[state]), sep="  ")
+        #input()
 
     
 ### Main
 
 # ejemplo básico para 10 bloques
-mdp = TransportationProblem(N=10)
+mdp = TransportationProblem(N=10000)
 
 # prueba simple, cuantas acciones tengo desde el estado 3?
 #print(mdp.actions(3))
