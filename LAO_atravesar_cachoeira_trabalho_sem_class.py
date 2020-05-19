@@ -10,9 +10,16 @@
 # Librerias
 #------------------------------------------
 #import sys
+import sys
 import numpy as np
 import pandas as pd
-from time import time 
+from time import time
+import matplotlib.pyplot as plt
+import csv
+import sys
+import os
+import matplotlib
+import seaborn as sb
 
 #------------------------------------------
 # Variáveis globais
@@ -34,15 +41,25 @@ G_So_I = set()           # conjunto de todos os nodos internos do hipergrafo G_S
 G_So_F = set()           # conjunto de todos os nodos fronteira do hipergrafo G_So
 G_So_v_I = set()         # conjunto de todos os nodos internos do hipergrafo G_So com a função V(s)
 G_So_v_F = set()         # conjunto de todos os nodos fronteira do hipergrafo G_So com a função V(s)
-V = {}                   # diccionario de valores para cada tupla (s_n, Vs_n)
+V = pd.DataFrame()                # diccionario de valores para cada tupla (s_n, Vs_n)
+epsilon = 0.001
+ganma = 1
+T = {}
 
+# enviroment ='Ambiente1'
+# X = 5
+# Y = 25
+# A = 4
+# S=125
+# So = 1
+# G = 125
 #------------------------------------------
 # Métodos para definir o mundo
 #------------------------------------------
 
 def loadData(enviroment_, X_, Y_, A_, So_, G_):   
     global A, G, So, S, x, y, enviroment
-    global T_norte, T_sul, T_leste, T_oeste, C_matrix
+    global T_norte, T_sul, T_leste, T_oeste, C_matrix, T
     enviroment = enviroment_
     S = X_*Y_
     x = X_
@@ -59,30 +76,60 @@ def loadData(enviroment_, X_, Y_, A_, So_, G_):
     T_sul.columns=('s_in', 's_out', 'prob')
     T_leste.columns=('s_in', 's_out', 'prob')
     T_oeste.columns=('s_in', 's_out', 'prob')
+    # T_norte =np.array(T_norte)
+    # T_sul =np.array(T_sul)
+    # T_leste =np.array(T_leste)
+    # T_oeste =np.array(T_oeste)
     
-def printSolution(V, pi):               
-    return "results"
+    # T=pd.DataFrame(columns = ['listT'], index = range(1,S+1) )
+    # T['listT'] = {}
+
+    # for item in T_norte:
+    #     tripla = (item[1],item[2],1.)
+    #     if pd.isnan(T.iloc[int(item[0])]['listT']):
+    #         tripla = (item[1],item[2],1.)
+    #         T.iloc[int(item[0])] =T.iloc[int(item[0])]['listT'].append(tripla)
+        
+    
+    
+def printSolution(self, Rm,X,Y):    
+    Rm = Rm.drop([3], axis=1) 
+    Rm = Rm.to_numpy()
+    
+    Vm = Rm[:,1]
+    Pm = Rm[:,2]
+    
+    Vm = Vm.reshape(X,Y)
+    #pi_grafico = Pm.reshape(Y,X)
+    heat_map = sb.heatmap(Vm)
+    figure = heat_map.get_figure()
+    figure.show()
+    figure.savefig(os.path.join("Img_ambiente_%s_ep_%s_g_%s.png" % (enviroment,epsilon,ganma)))
     
 def actions(A):
     return range(1, A+1) # 1:norte, 2:sul, 3:leste, 4:oeste
 
 def T(s_in, s_out, action):                
     if action == 1:
-        return float(T_norte[(T_norte['s_in'] == s_in) & (T_norte['s_out'] == s_out)]["prob"]) if not T_norte[(T_norte['s_in'] == s_in) & (T_norte['s_out'] == s_out)].empty else 0
+        df =  T_norte[(T_norte['s_out'] == s_out) & (T_norte['s_in'] == s_in) ]
+        return float(df["prob"]) if not df.empty else 0
     elif action == 2:
-        return float(T_sul[(T_sul['s_in'] == s_in) & (T_sul['s_out'] == s_out)]["prob"]) if not T_sul[(T_sul['s_in'] == s_in) & (T_sul['s_out'] == s_out)].empty else 0    
+        df = T_sul[(T_sul['s_out'] == s_out) & (T_sul['s_in'] == s_in)]
+        return float(df["prob"]) if not df.empty else 0    
     elif action == 3:
-        return float(T_leste[(T_leste['s_in'] == s_in) & (T_leste['s_out'] == s_out)]["prob"]) if not T_leste[(T_leste['s_in'] == s_in) & (T_leste['s_out'] == s_out)].empty else 0
+        df=T_leste[(T_leste['s_out'] == s_out) & (T_leste['s_in'] == s_in) ]
+        return float(df["prob"]) if not df.empty else 0
     elif action == 4:
-        return float(T_oeste[(T_oeste['s_in'] == s_in) & (T_oeste['s_out'] == s_out)]["prob"]) if not T_oeste[(T_oeste['s_in'] == s_in) & (T_oeste['s_out'] == s_out)].empty else 0
+        df=T_oeste[(T_oeste['s_out'] == s_out) & (T_oeste['s_in'] == s_in) ]
+        return float(df["prob"]) if not df.empty else 0
     else:
         return 0
-    
+    # return 2
 def states(S):
     return range(1, S+1)
 
 def C(state):              
-    if isGoal(state):
+    if isGoal(state):#-1
         return 0
     else:
         return -1
@@ -102,8 +149,9 @@ def nodes(I, F):
     return I.union(F)
 
 def initializeGraph():
-    V = {So:0}     
-    V[So] = heuristic(So) 
+    global V, G_So_F, G_So_v_F
+    V = pd.DataFrame(columns=['S','V']) 
+    V.loc[len(V)] = [So, heuristic(So)]
     G_So_F.add(So)
     G_So_v_F.add(So)    
    
@@ -124,38 +172,71 @@ def listAdjacent(s):
 # Algoritmo Value Iteration
 #------------------------------------------
 
-def valueIteration(S_list, epsilon, ganma):
-    V = pd.DataFrame(0, index = range(0,len(S_list)), columns = ['S', 'V']) # almacenar o Voptimo[estado]        
-    V_old = pd.DataFrame(0, index = range(0,len(S_list)), columns = ['S',''])
-    #V[len(S_list)-1] = 0.
-    pi = pd.DataFrame(0, index=range(0,len(S_list)), columns=['pi']) # politicas otimas
+def valueIteration(S_list, G):
+    V = pd.DataFrame(0, index = range(0,len(S_list)), columns = ['S', 'V']) # almacenar o Voptimo[estado]
+    V.loc[:,'S'] = S_list      
+    V_old = pd.DataFrame(0, index = range(0,len(S_list)), columns = ['S','V'])
+    V_old.loc[:,'S'] = S_list   
+    pi = pd.DataFrame(0, index=range(0,len(S_list)), columns=['S','pi']) # politicas otimas
+    pi.loc[:,'S'] = S_list   
+    
     res = np.inf
-    Q = pd.DataFrame(0, index=range(0,len(S_list)), columns = range(1,A+1))
-        
-    while res > epsilon:
+    Q = pd.DataFrame(0, index=range(0,len(S_list)), columns = actions(A))
+    k = 0
+    calc = 0
+    # criar matriz temporal para S_list
+    T_z = np.zeros(shape=(len(S_list),len(S_list),4))
+    for act in actions(A):
+        for indexX, itemX in enumerate(S_list):
+            for indexY, itemY in enumerate(S_list):
+                T_z[indexX,indexY,act-1] = T(itemX, itemY,act)
+    
+    
+    while res > epsilon: #or calc < 1000:
+        k=k+1
         V_old = V.copy()
-        for index_s in range(0,len(S_list)):
+        for index_s, item_s in enumerate(S_list):
+            # if item_s == G:
+            #     V.loc[index_s,'V'] = 0.
+            # else:
             for action in actions(A):
-                Q.loc[index_s,action] = C(S_list[index_s])
-                for sNext in range(0,len(S_list)):
+                Q.loc[index_s,action] = C(item_s)
+                for index_next in range(0,len(S_list)):
                     #print(index_s,action)
-                    Q.loc[index_s,action] = Q.loc[index_s,action] + ganma*T(S_list[index_s], S_list[sNext],action)*V_old.loc[sNext,'V']
+                    Q.loc[index_s,action] = Q.loc[index_s,action] + ganma*T_z[index_s, index_next,action-1]*V_old.loc[index_next,'V']
+                    calc = calc+1
             V.loc[index_s,'V'] = np.max(Q, axis=1)[index_s] 
-            pi.loc[index_s,'pi'] = Q.idxmax(axis=1)[index_s]        
+            pi.loc[index_s,'pi'] = Q.idxmax(axis=1)[index_s]    
+            print('V')
+            print(V)
+            print('V_old')
+            print(V_old)
+            print('pi')
+            print(pi)
+            #mostrar grafico da evolucao
+            # Vm = np.array(Q)
+            # heat_map = sb.heatmap(Vm)
+            # figure = heat_map.get_figure()    
+            # figure.savefig(os.path.join("Img_ambiente_%s_ep_%s_g_%s.png" % (enviroment,epsilon,ganma)))
+       
         # verificar a convergencia
         res = 0
         for s in range(0, len(S_list)):
             dif = abs(V_old.loc[s,'V']-V.loc[s,'V'])
             if dif > res:
                 res = dif
+        print(calc," ", dif)
     return V,pi
 
 #------------------------------------------
 # Algoritmo LAO*
 #------------------------------------------
 
-def LAO(epsilon, ganma):    
+def LAO(epsilon_, ganma_):    
     global G_So_I, G_So_F, G_So_v_I, G_So_v_F, V
+    global epsilon, ganma
+    epsilon = epsilon_
+    ganma = ganma_
     
     # 1. inicializa uma ´arvore com o n´o raiz s0    
     initializeGraph()
@@ -167,27 +248,30 @@ def LAO(epsilon, ganma):
     nodesForVisit = G_So_F.intersection(G_So_v_F)
     s = 0
     while len(nodesForVisit) > 0 and not isGoal(s):
-        # a) escolha um n´o folha para expandir
+        # a) escolha um no folha para expandir
         s = nodesForVisit.pop()
         # b) retira s do conjunto de nós fronteira
         G_So_F.remove(s)
-        # c) adiciona s ao conjunto de nós internos
+        # d) adiciona s ao conjunto de nós internos
         G_So_I.add(s)
-        # d) expandir, adicionar a F os adjacentes com T>0
+        # c) expandir, adicionar a F os adjacentes com T>0
         adj = listAdjacent(s)
         
         for node_adj in adj:
-            G_So_F.add(node_adj)
+            G_So_F.add(node_adj) #adicionar os nos expandidos a fronteira
+            V.loc[len(V)] = [node_adj, heuristic(node_adj)] # aplicar heuristica aos nos fronteira
         
         # e) atualiza estados em G_So
         G_So = G_So_I.union(G_So_F)
         
-        # f) todos os estados que podem alcancar G, melhores acoes
+        # f) todos os estados que podem alcancar s, melhores acoes
+        Z = G_So.copy()
+        Z.add(s)
         
-        # g) atualiza V para todo S em Z, aplicar VI
+        # g) atualiza V para todo S em Z, aplicar VI       
+        V_So, pi_So = valueIteration(Z,s)
         # quem que está em G_So_v e que consegui chegar a s
-        V_So, pi_So = valueIteration(list(G_So), epsilon, ganma)
-        V.setdefault(V_So)
+        #V.append([V_So])
         # h) reconstroi G_Vs0
         
         nodesForVisit = G_So_F.intersection(G_So_v_F)
@@ -199,26 +283,49 @@ def LAO(epsilon, ganma):
 # Métodos para executar os experimentos
 #------------------------------------------
 
-def executarExperimentosLAO(laoObject,enviroment,nro_exp):
-    ganma =  1
-    epsilon = 0.001
-    for i in range(0,nro_exp):        
+def executarExperimentosLAO(laoObject,nro_exp):
+    global epsilon, ganma
+    fig, axs = plt.subplots(nro_exp, 1, sharex=True)
+    
+    for i in range(1,nro_exp+1):
         tempo_inicial_vi = time()
-        V_opt, pi_opt = laoObject.lao_estrela(epsilon, ganma)
+        V_opt, pi_opt, converg = valueIteration(epsilon, ganma)
         tempo_final_vi = time()    
         tempo_execucao_vi = tempo_final_vi-tempo_inicial_vi
         print('*********************************************')
         print('  Ambiente: ' + enviroment)
-        print('  Experimento:'+ str(i+1))
+        print('  Experimento: ' + str(nro_exp))
         print('  Ganma: ' + str(ganma))
         print('  Epsilon: '+ str(epsilon))
         print('  Tempo VI: '+ str(tempo_execucao_vi/360))
+        print('  Nro iteracoes: ' + str(np.max(converg.loc[:,'Iteracoes'])))
+        print('  Erro converg: ' + str(np.min(converg.loc[:,'Erro'])))
+        print('  Nro calculos de Q: ' + str(np.max(converg.loc[:,'q'])))
+        print('  Nos expandidos: ' + str(1))
         print('*********************************************')        
         # mostrar solucao e salvar resultados em arquivo        
-        results = laoObject.printSolution(V_opt, pi_opt)
-        results.to_csv('results_'+enviroment+'_exp'+str(i+1)+'_ganma'+str(ganma)+'_epsilon'+str(epsilon)+'_tempo'+str(tempo_execucao_vi/360)+'.txt', index=False) 
+        printSolution(converg)
+        # converg = pd.DataFrame(columns=['Iteracoes', 'Erro','q'])
+        # converg.loc[9] = [2,2,3]
+        # converg.loc[10] = [3,4,4]
+        # converg.loc[12] = [4,6,4]
+        
+        # plot figuras
+        axs[i-1].plot(converg.loc[:,'Iteracoes'], converg.loc[:,'Erro'], lw=2)        
+        axs[i-1].set_title('Experimento'+str(i))
+        
+        # salvar resultados
+        converg.to_csv('Amb_'+enviroment+'_exp_'+str(i)+'_g_'+str(ganma)+'_e_'+str(epsilon)+'_t'+str(tempo_execucao_vi/360)+'_it_'+str(np.max(converg.loc[:,'Iteracoes']))+'_calq_'+str(np.max(converg.loc[:,'q']))+'.txt', index=False) 
+        
+        # variar os parámetros
         ganma = ganma - 0.2
-        epsilon = epsilon*0.1            
+        epsilon = epsilon*0.01      
+    
+    for ax in axs.flat:
+        ax.set(xlabel='Iteracoes', ylabel='Erro')
+        ax.label_outer()
+        
+    plt.savefig(os.path.join("ambiente_%s_ep_%s_g_%s.png" % (enviroment,epsilon,ganma)), bbox_inches='tight')
 
 #------------------------------------------
 # Main()
@@ -226,9 +333,9 @@ def executarExperimentosLAO(laoObject,enviroment,nro_exp):
 
 def main():    
     # teste
-    loadData(enviroment_ ='Ambiente0', X_ = 2, Y_ = 5, A_ = 4, So_ = 6, G_ = 10)    
+    loadData(enviroment_ ='Ambiente1', X_ = 2, Y_ = 5, A_ = 4, So_ = 6, G_ = 10)    
 
-    LAO(ganma =  1, epsilon = 0.001)
+    LAO(ganma_ =  1, epsilon_ = 0.001)
     #executarExperimentosLAO(mdpObject = lao, enviroment = 'Ambiente1', nro_exp = 3)
     
     #mdp = LAO(So=1, G=125, X=5, Y=25, enviroment='Ambiente1')

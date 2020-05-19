@@ -6,10 +6,16 @@
 @Tipo: Processo de Decisao de Markov MDP
 @Algoritmo de Iteracao Valor (Value Iteration)
 """
-import os
 import sys
 import numpy as np
-sys.setrecursionlimit(10000)
+import pandas as pd
+from time import time
+import matplotlib.pyplot as plt
+import csv
+import sys
+import os
+import matplotlib
+import seaborn as sb
      
 ### Classe MDP
 
@@ -122,6 +128,18 @@ class MDP(object):
         for s in self.states():
             print('(S:{:2}, V:{:5}, pi:{:5} {:2})'.format(s, V[s], pi[s], pi_grafico[s]))
         
+        Rm = Rm.drop([3], axis=1) 
+        Rm = Rm.to_numpy()
+        
+        Vm = Rm[:,1]
+        Pm = Rm[:,2]
+        
+        Vm = V.reshape(Y,X)
+        #pi_grafico = Pm.reshape(Y,X)
+        heat_map = sb.heatmap(Vm)
+        plt.show()
+        plt.savefig(os.path.join("Img_ambiente_%s_ep_%s_g_%s.png" % (ambiente,epsilon,ganma)), bbox_inches='tight')
+          
 
 ### Algoritmos
         
@@ -143,7 +161,10 @@ def valueIteration(mdp, epsilon, ganma):
                     Q[state,action] = Q[state,action] + ganma*mdp.T(state,sNext,action)*V_old[sNext]
                 #print ('*{:1} {:15}'.format(state, Q[state,action]))
             V[state] = np.max(Q, axis=1)[state] 
-            pi[state] = np.argmax(Q, axis=1)[state]            
+            pi[state] = np.argmax(Q, axis=1)[state]
+            Vm = V.reshape(mdp.X, mdp.Y)
+            heat_map = sb.heatmap(Vm)
+            plt.show()           
         # verificar a convergencia
         res = 0
         for s in mdp.states():
@@ -159,6 +180,30 @@ def valueIteration(mdp, epsilon, ganma):
         print ('{:1} {:15} {:15}'.format(state, V[state], pi[state]))
     return V,pi
 
+##############
+def printSolution(V, Pi, nr_exp):    
+    #os.system('clear')
+    Vm = pd.DataFrame.from_dict(V.items())
+    Pm = pd.DataFrame.from_dict(Pi.items())
+    Vm = Vm.to_numpy()
+    Pm = Pm.to_numpy()
+
+    Vm = Vm[:,1].reshape(X,Y)
+    Pm = Pm[:,1].reshape(X,Y)
+    #pi_grafico = Pm.reshape(Y,X)
+    heat_mapV = sb.heatmap(Vm)
+    figure = heat_mapV.get_figure()
+    figure.show()
+    figure.savefig(os.path.join("%s_Img_V_amb_%s_ep_%s_g_%s.png" % (nr_exp,Enviroment,Epsilon,Ganma)))
+    
+    heat_mapP = sb.heatmap(Pm)
+    figure = heat_mapP.get_figure()
+    figure.show()    
+    figure.savefig(os.path.join("%s_Img_P_amb_%s_ep_%s_g_%s.png" % (nr_exp,Enviroment,Epsilon,Ganma)))
+##############
+
+
 mdp = MDP(S=10, So=5, G=9, X=2, Y=5)
 V_opt, pi_opt = valueIteration(mdp, 0.000001, 0.8)
-mdp.printSolution(V_opt, pi_opt)
+printSolution(V_opt,pi_opt,1)
+#mdp.printSolution(V_opt, pi_opt)

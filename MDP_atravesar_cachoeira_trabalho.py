@@ -10,6 +10,7 @@ import sys
 import numpy as np
 import pandas as pd
 from time import time 
+import matplotlib.pyplot as plt
 sys.setrecursionlimit(10000)
 
 ### Classe MDP
@@ -139,8 +140,21 @@ def executarExperimentosVI(mdpObject,ambiente,nro_exp):
         # mostrar solucao e salvar resultados em arquivo        
         results = mdp.printSolution(V_opt, pi_opt)
         results.to_csv('results_'+ambiente+'_exp'+str(i)+'_ganma'+str(ganma)+'_epsilon'+str(epsilon)+'.txt', index=False) 
+         
+        fig = plt.figure((nro_exp * 3) + 1) # configurando a figura a ser modificada
+        fig.set_size_inches(10,10) # tamanho da figura        
+        plt.plot( x ='Iteracoes', y='Erro', kind = 'line', lw=2, label='Experimento '+ str(i+1) + ' em ' + ambiente) # plotando as curva no gráfico
+        #plt.xlim([0.0, 1.0]) # limite eixo X
+        #plt.ylim([0.0, 1.05]) # limite eixo Y
+        plt.xlabel('Número de iteração') # label eixo X
+        plt.ylabel('Erro') # label eixo Y
+        plt.title('Curva de convergencia') # nome do gráfico
+        plt.legend(loc="lower right") # posição da legenda
+        #plt.show()
+        plt.savefig(os.path.join("results_ambiente%s_exp%s_g%s_e%s.png" % (ambiente, nro_exp,gamna,epsilon)), bbox_inches='tight') # salvando a figura
+        
         ganma = ganma - 0.20
-        epsilon = epsilon/10            
+        epsilon = epsilon/10   
 
 
 
