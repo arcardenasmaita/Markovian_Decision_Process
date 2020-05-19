@@ -41,8 +41,8 @@ G_So_F = set()           # conjunto de todos os nodos fronteira do hipergrafo G_
 G_So_v_I = set()         # conjunto de todos os nodos internos do hipergrafo G_So com a função V(s)
 G_So_v_F = set()         # conjunto de todos os nodos fronteira do hipergrafo G_So com a função V(s)
 V = pd.DataFrame()       # diccionario de valores para cada tupla (s_n, Vs_n)
-Epsilon = 0.000001
-Ganma = 0.8
+Epsilon = 0.000000001
+Ganma = 1
 Lao_t = 0
 Vi_t = 0
 Vi_converg = pd.DataFrame(columns=['it','error'])
@@ -192,31 +192,35 @@ def printSolution(V, Pi, nr_exp):
 #------------------------------------------
 #------------------------------------------
 
-def valueIteration(mdp):
-    global Vi_t, Vi_calc, Vi_converg
+def valueIteration(mdp, ganma, epsilon):
+    global Vi_t, Vi_calc, Vi_converg, Ganma, Epsilon
     Vi_t_ini = time()    
+    Ganma = ganma
+    Epsilon = epsilon
     
     # inicializar valores
     V = {} # estado ->Voptimo[estado]
     
     for state in mdp.states():
-        V[state] = 0.    
+        V[state] = 0. 
+        
     def Q(state, action):
-        q_temp = []
-        #Vi_calc = 0
-        for newState, prob, reward in mdp.succesorProbReward(state, action):
-            print('S=%s A=%s nS=%s P=%s R=%s' %(state, action,newState, prob,reward))
-            print(str(prob*(reward + mdp.discount()*V[newState])))
-            q_temp.append(prob*(reward + mdp.discount()*V[newState]))
-            #Vi_calc = Vi_calc+ 1
-            
-        return sum(q_temp)
+        return sum(prob*(reward + Ganma*V[newState]) \
+                   for newState, prob, reward in mdp.succesorProbReward(state, action))            
+        # q_temp = []
+        # #Vi_calc = 0
+        # for newState, prob, reward in mdp.succesorProbReward(state, action):
+        #     print('S=%s A=%s nS=%s P=%s R=%s' %(state, action,newState, prob,reward))
+        #     print(str(prob*(reward + mdp.discount()*V[newState])))
+        #     q_temp.append(prob*(reward + mdp.discount()*V[newState]))
+        #     #Vi_calc = Vi_calc+ 1            
+        # return sum(q_temp)
         # return sum(prob*(reward + mdp.discount()*V[newState]) \
         #            for newState, prob, reward in mdp.succesorProbReward(state, action))
     Vi_it = 0
-    error = 10000000000
+    error = 100000
     while True:
-        Vi_converg.append([Vi_it,error])
+        Vi_converg.loc[len(Vi_converg)] = [Vi_it,error]
         Vi_it = Vi_it+1
         # calcular los nuevos valores 'newV' dados los anteriores valores 'V'
         newV = {}
@@ -224,29 +228,26 @@ def valueIteration(mdp):
         for state in mdp.states():
             if mdp.isEnd(state):
                 newV[state] = 0.
-                pi[state] = 'none'
             else:
-                newV[state] = max(Q(state,action) for action in mdp.actions(state))        
-                # recuperar argumentos que maximizan la función Q (argmax)
-                pi[state] = max((Q(state, action), action) for action in mdp.actions(state))
+                newV[state] = max(Q(state,action) for action in mdp.actions(state))                      
                 
-        # verificar la convergencia
-        # res = 0
-        # for state in mdp.states():
-        #     dif = abs(V[state]-newV[state])
-        #     if max(dif) < Epsilon:
-        #         Vi_converg.append([Vi_it,max(dif)])
-        #         Vi_t_fin = time()    
-        #         Vi_t = (Vi_t_fin-Vi_t_ini)/360
-        #         break
-        
         error = max(abs(V[state]-newV[state]) for state in mdp.states()) 
-        print(error)
+        print('E = ', error)
         if error < Epsilon:
             Vi_t_fin = time()    
             Vi_t = (Vi_t_fin-Vi_t_ini)/360
             break
-        V = newV        
+        V = newV  
+        
+         # leer la politica
+        pi = {}
+        for state in mdp.states():
+            if mdp.isEnd(state):
+                pi[state] = 'none'
+            else:
+                # recuperar argumentos que maximizan la función Q (argmax)
+                pi[state] = max((Q(state, action), action) for action in mdp.actions(state)) 
+        
     return V, pi     
         
 
@@ -264,7 +265,7 @@ def main():
     # print(mdp.succesorProbReward(1.0,'S'))
     # print(mdp.succesorProbReward(1.0,'L'))
     # print(mdp.succesorProbReward(1.0,'O'))
-    V,pi = valueIteration(mdp)
+    V,pi = valueIteration(mdp, ganma = 0.9, epsilon = 0.00001)
     printSolution(V,pi,1)
     #LAO(ganma_ =  1, epsilon_ = 0.001)
     #executarExperimentosLAO(mdpObject = lao, enviroment = 'Ambiente1', nro_exp = 3)
